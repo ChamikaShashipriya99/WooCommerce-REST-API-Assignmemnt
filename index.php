@@ -2,7 +2,8 @@
 require_once 'ApiClient.php';
 
 $client = new ApiClient();
-$products_data = $client->getProducts();
+// Fetch 50 products to ensure we see all 17 items.
+$products_data = $client->getProducts(1, 50);
 $products = [];
 $error = null;
 
