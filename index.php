@@ -92,7 +92,8 @@ elseif (isset($products_data['code'])) {
     
     <footer class="app-footer">
         <div class="container">
-            <p>&copy; <?php echo date('Y'); ?> WooCommerce API Client. Built with PHP & CSS.</p>
+            <p>&copy; <?php echo date('Y'); ?> WooCommerce API Client.</p>
+            <p>Made By Chamika Shashipriya at DoAcademy</p>
         </div>
     </footer>
 
