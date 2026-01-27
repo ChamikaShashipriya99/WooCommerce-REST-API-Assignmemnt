@@ -23,9 +23,36 @@ body {
 }
 
 .container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 2rem;
+    width: 100%;
+    padding-right: 1.5rem;
+    padding-left: 1.5rem;
+    margin-right: auto;
+    margin-left: auto;
+    box-sizing: border-box;
+}
+
+@media (min-width: 576px) {
+    .container {
+        max-width: 540px;
+    }
+}
+
+@media (min-width: 768px) {
+    .container {
+        max-width: 720px;
+    }
+}
+
+@media (min-width: 992px) {
+    .container {
+        max-width: 960px;
+    }
+}
+
+@media (min-width: 1200px) {
+    .container {
+        max-width: 1140px;
+    }
 }
 
 /* Header */
@@ -55,11 +82,40 @@ body {
 }
 
 /* Grid */
+/* Grid */
 .product-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 2.5rem;
-    padding-bottom: 4rem;
+    grid-template-columns: 1fr;
+    /* Mobile: 1 column */
+    gap: 1.5rem;
+    padding-bottom: 3rem;
+}
+
+/* Tablet (768px - 1199px) */
+@media (min-width: 768px) {
+    .product-grid {
+        grid-template-columns: repeat(2, 1fr);
+        /* 2 columns */
+        gap: 2rem;
+    }
+}
+
+/* Landscape Tablet / Small Desktop */
+@media (min-width: 992px) {
+    .product-grid {
+        grid-template-columns: repeat(3, 1fr);
+        /* 3 columns */
+    }
+}
+
+/* Desktop (1200px+) */
+@media (min-width: 1200px) {
+    .product-grid {
+        grid-template-columns: repeat(3, 1fr);
+        /* 3 columns */
+        gap: 2.5rem;
+        padding-bottom: 4rem;
+    }
 }
 
 /* Card */
