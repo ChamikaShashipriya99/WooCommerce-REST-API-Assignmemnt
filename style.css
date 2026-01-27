@@ -227,6 +227,10 @@ body {
     color: var(--text-primary);
     font-weight: 700;
     letter-spacing: -0.02em;
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem 0.5rem;
 }
 
 .product-price ins {
@@ -237,8 +241,38 @@ body {
 .product-price del {
     color: var(--text-secondary);
     font-size: 0.9rem;
-    margin-right: 0.5rem;
     font-weight: 400;
+}
+
+/* WooCommerce accessibility text (hide visually, keep for screen readers) */
+.screen-reader-text {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+/* Price polish (WooCommerce outputs bdi/span wrappers) */
+.product-price bdi,
+.product-price .woocommerce-Price-amount,
+.product-price .woocommerce-Price-currencySymbol {
+    font: inherit;
+}
+
+.product-price del bdi,
+.product-price del .woocommerce-Price-amount {
+    opacity: 0.8;
+    text-decoration: line-through;
+}
+
+.product-price ins bdi,
+.product-price ins .woocommerce-Price-amount {
+    font-weight: 800;
 }
 
 /* Error & Empty States */
