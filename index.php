@@ -44,16 +44,43 @@ elseif (isset($response['data']) && is_array($response['data'])) {
     </header>
 
     <main class="container">
+        <!-- Loading State -->
+        <div id="loading-state" class="loading-state" style="display: none;">
+            <div class="spinner-container">
+                <div class="spinner"></div>
+                <p>Loading products...</p>
+            </div>
+        </div>
+
+        <!-- Skeleton Loading State -->
+        <div id="skeleton-state" class="skeleton-state" style="display: none;">
+            <div class="product-grid">
+                <?php for ($i = 0; $i < 9; $i++): ?>
+                    <article class="product-card skeleton-card">
+                        <div class="skeleton-image"></div>
+                        <div class="skeleton-content">
+                            <div class="skeleton-line skeleton-title"></div>
+                            <div class="skeleton-line skeleton-price"></div>
+                        </div>
+                    </article>
+                <?php endfor; ?>
+            </div>
+        </div>
+
         <?php if ($error): ?>
-            <div class="error-container">
+            <div class="error-container" id="error-container">
                 <div class="error-icon">⚠️</div>
                 <h2>Oops! Something went wrong.</h2>
-                <p><?php echo htmlspecialchars($error); ?></p>
+                <p class="error-message"><?php echo htmlspecialchars($error); ?></p>
                 <?php if (strpos($error, 'woocommerce_rest_cannot_view') !== false): ?>
                     <p class="error-hint"><strong>Access Denied:</strong> The API Keys provided are valid but do not have permission to view products. Please generate new keys for an <strong>Administrator</strong> user.</p>
                 <?php else: ?>
                     <p class="error-hint">Please check your API connection and try again.</p>
                 <?php endif; ?>
+                <button class="retry-btn" onclick="retryLoad()">
+                    <span class="retry-icon">↻</span>
+                    <span>Try Again</span>
+                </button>
             </div>
         <?php elseif (empty($products)): ?>
             <div class="empty-state">
@@ -88,7 +115,7 @@ elseif (isset($response['data']) && is_array($response['data'])) {
         <?php endif; ?>
     </main>
 
-    <?php if ($total_pages > 1): ?>
+    <?php if ($total_pages > 1 && !$error): ?>
     <div class="container pagination-container">
         <?php if ($current_page > 1): ?>
             <a href="?page=<?php echo $current_page - 1; ?>&per_page=<?php echo $per_page; ?>" class="page-btn prev">Previous</a>
@@ -112,6 +139,60 @@ elseif (isset($response['data']) && is_array($response['data'])) {
             <p>Made By Chamika Shashipriya at DoAcademy</p>
         </div>
     </footer>
+
+    <script>
+        function showLoading() {
+            document.getElementById('loading-state').style.display = 'block';
+            document.getElementById('skeleton-state').style.display = 'none';
+            const errorContainer = document.getElementById('error-container');
+            if (errorContainer) errorContainer.style.display = 'none';
+            const productGrid = document.querySelector('.product-grid');
+            if (productGrid) productGrid.style.display = 'none';
+        }
+
+        function showSkeleton() {
+            document.getElementById('skeleton-state').style.display = 'block';
+            document.getElementById('loading-state').style.display = 'none';
+            const errorContainer = document.getElementById('error-container');
+            if (errorContainer) errorContainer.style.display = 'none';
+            const productGrid = document.querySelector('.product-grid');
+            if (productGrid) productGrid.style.display = 'none';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading-state').style.display = 'none';
+            document.getElementById('skeleton-state').style.display = 'none';
+        }
+
+        function retryLoad() {
+            const retryBtn = event.target.closest('.retry-btn');
+            const btnText = retryBtn.querySelector('span:last-child');
+            const btnIcon = retryBtn.querySelector('.retry-icon');
+            
+            // Disable button and show loading state
+            retryBtn.disabled = true;
+            btnText.textContent = 'Retrying...';
+            btnIcon.style.animation = 'spin 1s linear infinite';
+            
+            // Show skeleton loading
+            showSkeleton();
+            
+            // Reload the page
+            setTimeout(() => {
+                window.location.reload();
+            }, 300);
+        }
+
+        // Show skeleton on page navigation
+        document.addEventListener('DOMContentLoaded', function() {
+            const paginationLinks = document.querySelectorAll('.page-btn:not(.disabled)');
+            paginationLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    showSkeleton();
+                });
+            });
+        });
+    </script>
 
 </body>
 </html>
