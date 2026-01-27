@@ -1,27 +1,202 @@
 <?php
 require_once 'ApiClient.php';
 
-$client = new ApiClient();
-
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-$per_page = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 9;
-
-$response = $client->getProducts($page, $per_page);
-$products = [];
-$error = null;
-$total_pages = 0;
-$current_page = 1;
-
-if (isset($response['error'])) {
-    $error = $response['error'];
-} 
-elseif (isset($response['data']) && is_array($response['data'])) {
-    $products = $response['data'];
-    $total_pages = $response['meta']['total_pages'] ?? 1;
-    $current_page = $response['meta']['current_page'] ?? 1;
-} else {
-    $error = "Unexpected response from API.";
+/**
+ * Fetch products from WooCommerce API
+ * 
+ * @param int $page Page number
+ * @param int $perPage Products per page
+ * @return array ['products' => [], 'error' => null|string, 'meta' => []]
+ */
+function fetchProducts($page, $perPage) {
+    $client = new ApiClient();
+    $response = $client->getProducts($page, $perPage);
+    
+    $result = [
+        'products' => [],
+        'error' => null,
+        'meta' => [
+            'total_pages' => 0,
+            'current_page' => $page
+        ]
+    ];
+    
+    if (isset($response['error'])) {
+        $result['error'] = $response['error'];
+    } elseif (isset($response['data']) && is_array($response['data'])) {
+        $result['products'] = $response['data'];
+        $result['meta']['total_pages'] = $response['meta']['total_pages'] ?? 1;
+        $result['meta']['current_page'] = $response['meta']['current_page'] ?? $page;
+    } else {
+        $result['error'] = "Unexpected response from API.";
+    }
+    
+    return $result;
 }
+
+/**
+ * Render product card HTML
+ * 
+ * @param array $product Product data
+ * @return string HTML
+ */
+function renderProductCard($product) {
+    $price = $product['price_html'] ?? ($product['price'] ? '$' . $product['price'] : '');
+    $imageSrc = $product['images'][0]['src'] ?? 'https://via.placeholder.com/300x300?text=No+Image';
+    $status = $product['stock_status'] ?? 'unknown';
+    $statusLabel = str_replace('-', ' ', $status);
+    $name = htmlspecialchars($product['name']);
+    
+    ob_start();
+    ?>
+    <article class="product-card">
+        <div class="product-image-wrapper">
+            <span class="stock-badge <?php echo htmlspecialchars($status); ?>">
+                <?php echo ucwords($statusLabel); ?>
+            </span>
+            <img src="<?php echo htmlspecialchars($imageSrc); ?>" alt="<?php echo $name; ?>" loading="lazy">
+        </div>
+        <div class="product-info">
+            <h2 class="product-title"><?php echo $name; ?></h2>
+            <div class="product-meta">
+                <span class="product-price"><?php echo $price; ?></span>
+            </div>
+        </div>
+    </article>
+    <?php
+    return ob_get_clean();
+}
+
+/**
+ * Render products grid
+ * 
+ * @param array $products Array of product data
+ * @return string HTML
+ */
+function renderProducts($products) {
+    if (empty($products)) {
+        return '<div class="empty-state">
+            <h2>No products found</h2>
+            <p>We couldn\'t find any products in the store right now.</p>
+        </div>';
+    }
+    
+    ob_start();
+    ?>
+    <div class="product-grid">
+        <?php foreach ($products as $product): ?>
+            <?php echo renderProductCard($product); ?>
+        <?php endforeach; ?>
+    </div>
+    <?php
+    return ob_get_clean();
+}
+
+/**
+ * Render error message with retry button
+ * 
+ * @param string $errorMessage Error message to display
+ * @return string HTML
+ */
+function renderError($errorMessage) {
+    $isAccessDenied = strpos($errorMessage, 'woocommerce_rest_cannot_view') !== false;
+    
+    ob_start();
+    ?>
+    <div class="error-container" id="error-container">
+        <div class="error-icon">⚠️</div>
+        <h2>Oops! Something went wrong.</h2>
+        <p class="error-message"><?php echo htmlspecialchars($errorMessage); ?></p>
+        <?php if ($isAccessDenied): ?>
+            <p class="error-hint">
+                <strong>Access Denied:</strong> The API Keys provided are valid but do not have permission to view products. 
+                Please generate new keys for an <strong>Administrator</strong> user.
+            </p>
+        <?php else: ?>
+            <p class="error-hint">Please check your API connection and try again.</p>
+        <?php endif; ?>
+        <button class="retry-btn" onclick="retryLoad()">
+            <span class="retry-icon">↻</span>
+            <span>Try Again</span>
+        </button>
+    </div>
+    <?php
+    return ob_get_clean();
+}
+
+/**
+ * Render loading states (spinner and skeleton)
+ * 
+ * @return string HTML
+ */
+function renderLoadingStates() {
+    ob_start();
+    ?>
+    <!-- Loading State -->
+    <div id="loading-state" class="loading-state" style="display: none;">
+        <div class="spinner-container">
+            <div class="spinner"></div>
+            <p>Loading products...</p>
+        </div>
+    </div>
+
+    <!-- Skeleton Loading State -->
+    <div id="skeleton-state" class="skeleton-state" style="display: none;">
+        <div class="product-grid">
+            <?php for ($i = 0; $i < 9; $i++): ?>
+                <article class="product-card skeleton-card">
+                    <div class="skeleton-image"></div>
+                    <div class="skeleton-content">
+                        <div class="skeleton-line skeleton-title"></div>
+                        <div class="skeleton-line skeleton-price"></div>
+                    </div>
+                </article>
+            <?php endfor; ?>
+        </div>
+    </div>
+    <?php
+    return ob_get_clean();
+}
+
+/**
+ * Render pagination controls
+ * 
+ * @param int $currentPage Current page number
+ * @param int $totalPages Total number of pages
+ * @param int $perPage Products per page
+ * @return string HTML
+ */
+function renderPagination($currentPage, $totalPages, $perPage) {
+    if ($totalPages <= 1) {
+        return '';
+    }
+    
+    ob_start();
+    ?>
+    <div class="container pagination-container">
+        <?php if ($currentPage > 1): ?>
+            <a href="?page=<?php echo $currentPage - 1; ?>&per_page=<?php echo $perPage; ?>" class="page-btn prev">Previous</a>
+        <?php else: ?>
+            <span class="page-btn disabled">Previous</span>
+        <?php endif; ?>
+
+        <span class="page-info">Page <?php echo $currentPage; ?> of <?php echo $totalPages; ?></span>
+
+        <?php if ($currentPage < $totalPages): ?>
+            <a href="?page=<?php echo $currentPage + 1; ?>&per_page=<?php echo $perPage; ?>" class="page-btn next">Next</a>
+        <?php else: ?>
+            <span class="page-btn disabled">Next</span>
+        <?php endif; ?>
+    </div>
+    <?php
+    return ob_get_clean();
+}
+
+// Main execution
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$perPage = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 9;
+
+$data = fetchProducts($page, $perPage);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -44,93 +219,17 @@ elseif (isset($response['data']) && is_array($response['data'])) {
     </header>
 
     <main class="container">
-        <!-- Loading State -->
-        <div id="loading-state" class="loading-state" style="display: none;">
-            <div class="spinner-container">
-                <div class="spinner"></div>
-                <p>Loading products...</p>
-            </div>
-        </div>
+        <?php echo renderLoadingStates(); ?>
 
-        <!-- Skeleton Loading State -->
-        <div id="skeleton-state" class="skeleton-state" style="display: none;">
-            <div class="product-grid">
-                <?php for ($i = 0; $i < 9; $i++): ?>
-                    <article class="product-card skeleton-card">
-                        <div class="skeleton-image"></div>
-                        <div class="skeleton-content">
-                            <div class="skeleton-line skeleton-title"></div>
-                            <div class="skeleton-line skeleton-price"></div>
-                        </div>
-                    </article>
-                <?php endfor; ?>
-            </div>
-        </div>
-
-        <?php if ($error): ?>
-            <div class="error-container" id="error-container">
-                <div class="error-icon">⚠️</div>
-                <h2>Oops! Something went wrong.</h2>
-                <p class="error-message"><?php echo htmlspecialchars($error); ?></p>
-                <?php if (strpos($error, 'woocommerce_rest_cannot_view') !== false): ?>
-                    <p class="error-hint"><strong>Access Denied:</strong> The API Keys provided are valid but do not have permission to view products. Please generate new keys for an <strong>Administrator</strong> user.</p>
-                <?php else: ?>
-                    <p class="error-hint">Please check your API connection and try again.</p>
-                <?php endif; ?>
-                <button class="retry-btn" onclick="retryLoad()">
-                    <span class="retry-icon">↻</span>
-                    <span>Try Again</span>
-                </button>
-            </div>
-        <?php elseif (empty($products)): ?>
-            <div class="empty-state">
-                <h2>No products found</h2>
-                <p>We couldn't find any products in the store right now.</p>
-            </div>
+        <?php if ($data['error']): ?>
+            <?php echo renderError($data['error']); ?>
         <?php else: ?>
-            <div class="product-grid">
-                <?php foreach ($products as $product): ?>
-                    <?php 
-                        $price = $product['price_html'] ?? ($product['price'] ? '$' . $product['price'] : '');
-                        $image_src = $product['images'][0]['src'] ?? 'https://via.placeholder.com/300x300?text=No+Image';
-                        $status = $product['stock_status'] ?? 'unknown';
-                        $status_label = str_replace('-', ' ', $status);
-                    ?>
-                    <article class="product-card">
-                        <div class="product-image-wrapper">
-                            <span class="stock-badge <?php echo htmlspecialchars($status); ?>">
-                                <?php echo ucwords($status_label); ?>
-                            </span>
-                            <img src="<?php echo htmlspecialchars($image_src); ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" loading="lazy">
-                        </div>
-                        <div class="product-info">
-                            <h2 class="product-title"><?php echo htmlspecialchars($product['name']); ?></h2>
-                            <div class="product-meta">
-                                <span class="product-price"><?php echo $price; // price_html contains HTML ?></span>
-                            </div>
-                        </div>
-                    </article>
-                <?php endforeach; ?>
-            </div>
+            <?php echo renderProducts($data['products']); ?>
         <?php endif; ?>
     </main>
 
-    <?php if ($total_pages > 1 && !$error): ?>
-    <div class="container pagination-container">
-        <?php if ($current_page > 1): ?>
-            <a href="?page=<?php echo $current_page - 1; ?>&per_page=<?php echo $per_page; ?>" class="page-btn prev">Previous</a>
-        <?php else: ?>
-            <span class="page-btn disabled">Previous</span>
-        <?php endif; ?>
-
-        <span class="page-info">Page <?php echo $current_page; ?> of <?php echo $total_pages; ?></span>
-
-        <?php if ($current_page < $total_pages): ?>
-            <a href="?page=<?php echo $current_page + 1; ?>&per_page=<?php echo $per_page; ?>" class="page-btn next">Next</a>
-        <?php else: ?>
-            <span class="page-btn disabled">Next</span>
-        <?php endif; ?>
-    </div>
+    <?php if (!$data['error']): ?>
+        <?php echo renderPagination($data['meta']['current_page'], $data['meta']['total_pages'], $perPage); ?>
     <?php endif; ?>
         
     <footer class="app-footer">
