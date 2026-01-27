@@ -2,25 +2,23 @@
 require_once 'ApiClient.php';
 
 $client = new ApiClient();
-// Fetch 50 products to ensure we see all 17 items.
-$products_data = $client->getProducts(1, 50);
+
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$per_page = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 9;
+
+$response = $client->getProducts($page, $per_page);
 $products = [];
 $error = null;
+$total_pages = 0;
+$current_page = 1;
 
-if (isset($products_data['error'])) {
-    $error = $products_data['error'];
+if (isset($response['error'])) {
+    $error = $response['error'];
 } 
-// WooCommerce API returns the array of products directly on success, NOT wrapped in 'data' usually, 
-// UNLESS there is an error.
-// The ApiClient returns decoded JSON.
-// If it's a list, it's an array of objects.
-// If it's an error, it's an object with 'code', 'message' etc. OR our custom 'error' key from ApiClient.
-
-elseif (isset($products_data['code'])) {
-     // API returned a specific error payload (like the 401 we saw)
-     $error = $products_data['message'];
-} elseif (is_array($products_data)) {
-    $products = $products_data;
+elseif (isset($response['data']) && is_array($response['data'])) {
+    $products = $response['data'];
+    $total_pages = $response['meta']['total_pages'] ?? 1;
+    $current_page = $response['meta']['current_page'] ?? 1;
 } else {
     $error = "Unexpected response from API.";
 }
@@ -89,7 +87,25 @@ elseif (isset($products_data['code'])) {
             </div>
         <?php endif; ?>
     </main>
-    
+
+    <?php if ($total_pages > 1): ?>
+    <div class="container pagination-container">
+        <?php if ($current_page > 1): ?>
+            <a href="?page=<?php echo $current_page - 1; ?>&per_page=<?php echo $per_page; ?>" class="page-btn prev">Previous</a>
+        <?php else: ?>
+            <span class="page-btn disabled">Previous</span>
+        <?php endif; ?>
+
+        <span class="page-info">Page <?php echo $current_page; ?> of <?php echo $total_pages; ?></span>
+
+        <?php if ($current_page < $total_pages): ?>
+            <a href="?page=<?php echo $current_page + 1; ?>&per_page=<?php echo $per_page; ?>" class="page-btn next">Next</a>
+        <?php else: ?>
+            <span class="page-btn disabled">Next</span>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
+        
     <footer class="app-footer">
         <div class="container">
             <p>&copy; <?php echo date('Y'); ?> WooCommerce API Client.</p>

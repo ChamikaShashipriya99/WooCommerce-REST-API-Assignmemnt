@@ -55,12 +55,15 @@ class ApiClient {
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $full_url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_setopt($ch, CURLOPT_HEADER, true); // Capture headers
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
         curl_setopt($ch, CURLOPT_USERAGENT, 'WooCommerce-API-Client/1.0');
         
         $response = curl_exec($ch);
+        $header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+        $header_string = substr($response, 0, $header_size);
+        $body = substr($response, $header_size);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
         curl_close($ch);
@@ -70,9 +73,28 @@ class ApiClient {
         }
 
         if ($http_code >= 400) {
-             return ['error' => 'HTTP Error: ' . $http_code . ' Response: ' . $response];
+             return ['error' => 'HTTP Error: ' . $http_code . ' Response: ' . $body];
         }
 
-        return json_decode($response, true);
+        // Parse headers for pagination
+        $total_products = 0;
+        $total_pages = 0;
+        if (preg_match('/x-wp-total:\s*(\d+)/i', $header_string, $matches)) {
+            $total_products = (int)$matches[1];
+        }
+        if (preg_match('/x-wp-totalpages:\s*(\d+)/i', $header_string, $matches)) {
+            $total_pages = (int)$matches[1];
+        }
+
+        $data = json_decode($body, true);
+
+        return [
+            'data' => $data,
+            'meta' => [
+                'total_products' => $total_products,
+                'total_pages' => $total_pages,
+                'current_page' => $page
+            ]
+        ];
     }
 }
