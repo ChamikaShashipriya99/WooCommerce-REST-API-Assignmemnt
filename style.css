@@ -1,4 +1,19 @@
 :root {
+    /*
+     * File: style.css
+     *
+     * Purpose:
+     * - Provides the styling for the WooCommerce API Client web interface (`index.php`).
+     *
+     * Role in the WooCommerce REST API integration:
+     * - This file does not call the API directly, but it supports the integration by
+     *   presenting API-fetched product data in a clean, readable UI.
+     *
+     * Technologies used:
+     * - CSS (custom properties, responsive media queries, animations)
+     */
+
+:root {
     --bg-color: #f8f9fa;
     --card-bg: #ffffff;
     --text-primary: #1a1a1a;
@@ -55,7 +70,7 @@ body {
     }
 }
 
-/* Header */
+/* Header (page title area) */
 .app-header {
     background-color: var(--card-bg);
     padding: 4rem 0;
@@ -81,8 +96,7 @@ body {
     margin: 0;
 }
 
-/* Grid */
-/* Grid */
+/* Product Grid (responsive layout for product cards) */
 .product-grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -275,7 +289,7 @@ body {
     font-weight: 800;
 }
 
-/* Error & Empty States */
+/* Error & Empty States (used when API fails or returns no products) */
 .error-container,
 .empty-state {
     text-align: center;
@@ -385,7 +399,7 @@ body {
     to { transform: rotate(360deg); }
 }
 
-/* Loading State */
+/* Loading State (shown while waiting for API data) */
 .loading-state {
     text-align: center;
     padding: 4rem 2rem;
@@ -413,7 +427,7 @@ body {
     margin: 0;
 }
 
-/* Skeleton Loading State */
+/* Skeleton Loading State (placeholder UI during loading) */
 .skeleton-state {
     padding-bottom: 3rem;
 }
@@ -475,7 +489,7 @@ body {
     border-top: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-/* Pagination */
+/* Pagination (page navigation for API results) */
 .pagination-container {
     display: flex;
     justify-content: center;

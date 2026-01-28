@@ -1,4 +1,26 @@
 <?php
+/**
+ * File: index.php
+ *
+ * Purpose:
+ * - Main web page for displaying WooCommerce products in a simple storefront-style UI.
+ *
+ * Role in the WooCommerce REST API integration:
+ * - Uses `ApiClient.php` to call the WooCommerce REST API.
+ * - Handles request parameters (pagination), processes the API response, and renders
+ *   HTML output for products, errors, and pagination controls.
+ *
+ * Technologies used:
+ * - PHP (functions, arrays, output buffering)
+ * - WooCommerce REST API (via `ApiClient`)
+ * - HTML/CSS (page layout)
+ * - JavaScript (basic loading/retry behavior)
+ *
+ * Security notes:
+ * - This file does not store API keys directly; credentials are provided via configuration.
+ * - In a production system, credentials should come from environment variables and
+ *   requests should be made over HTTPS.
+ */
 require_once 'ApiClient.php';
 
 /**
@@ -10,8 +32,13 @@ require_once 'ApiClient.php';
  */
 function fetchProducts($page, $perPage) {
     $client = new ApiClient();
+
+    // --- Data fetching logic ---
+    // Calls the API client which performs the authenticated request to WooCommerce.
     $response = $client->getProducts($page, $perPage);
     
+    // --- JSON response handling ---
+    // Normalize the API client response into a consistent structure for the UI.
     $result = [
         'products' => [],
         'error' => null,
@@ -21,6 +48,8 @@ function fetchProducts($page, $perPage) {
         ]
     ];
     
+    // --- Error handling ---
+    // If the client returns an error string, show it in the UI.
     if (isset($response['error'])) {
         $result['error'] = $response['error'];
     } elseif (isset($response['data']) && is_array($response['data'])) {
@@ -41,6 +70,7 @@ function fetchProducts($page, $perPage) {
  * @return string HTML
  */
 function renderProductCard($product) {
+    // Basic data extraction with fallbacks to keep the UI stable.
     $price = $product['price_html'] ?? ($product['price'] ? '$' . $product['price'] : '');
     $imageSrc = $product['images'][0]['src'] ?? 'https://via.placeholder.com/300x300?text=No+Image';
     $status = $product['stock_status'] ?? 'unknown';
@@ -99,6 +129,7 @@ function renderProducts($products) {
  * @return string HTML
  */
 function renderError($errorMessage) {
+    // Detect a common WooCommerce permission error to provide a more helpful hint.
     $isAccessDenied = strpos($errorMessage, 'woocommerce_rest_cannot_view') !== false;
     
     ob_start();
@@ -192,7 +223,8 @@ function renderPagination($currentPage, $totalPages, $perPage) {
     return ob_get_clean();
 }
 
-// Main execution
+// --- Main execution / controller logic ---
+// Reads pagination inputs from the query string, calls the API, and renders output.
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $perPage = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 9;
 
